@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { TaskTable } from "./components/TaskTable";
 import { AIInsights } from "./components/AIInsights";
+import { AIChatbot } from "./components/AIChatbot";
 
 // Import new pages
 import { LeadManagement } from "./pages/LeadManagement";
@@ -30,7 +31,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState("リード管理");
 
   return (
-    <div className="flex min-h-screen bg-[#f4f6f8] font-sans text-gray-900 font-medium">
+    <div className="flex min-h-screen bg-[#f4f6f8] font-sans text-gray-900 font-medium relative">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -69,6 +70,8 @@ export default function App() {
           </div>
         </main>
       </div>
+      
+      <AIChatbot />
     </div>
   );
 }

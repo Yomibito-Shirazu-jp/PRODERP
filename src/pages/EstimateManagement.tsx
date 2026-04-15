@@ -1,9 +1,11 @@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
-import { Search, Filter, Download, Plus, List } from "lucide-react";
+import { Search, Filter, Download, Plus, List, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { useState } from "react";
 import { Drawer } from "../components/ui/Drawer";
+import { generateQuickResponse } from "../lib/gemini";
+import ReactMarkdown from "react-markdown";
 
 const mockEstimates = [
   { id: "EST-001", project_id: "100234", estimates_id: "E2311001", pattern_name: "会社案内パンフレット制作", total: "1500000", status: "1", order_flg: "1", delivery_date: "2023-12-01", create_date: "2023-11-01" },
@@ -19,6 +21,21 @@ const mockEstimateDetails = [
 
 export function EstimateManagement() {
   const [selectedEstimate, setSelectedEstimate] = useState<any>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summaryResult, setSummaryResult] = useState<Record<string, string>>({});
+
+  const handleSummarize = async (estimate: any) => {
+    setIsSummarizing(true);
+    try {
+      const prompt = `以下の見積情報を短く（100文字程度で）要約し、金額感や納期についての簡単なコメントをしてください。\n案件名: ${estimate.pattern_name}\n顧客: ${estimate.project_id}\n合計金額: ${estimate.total}円\n納期: ${estimate.delivery_date}`;
+      const result = await generateQuickResponse(prompt);
+      setSummaryResult(prev => ({ ...prev, [estimate.id]: result }));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -97,7 +114,7 @@ export function EstimateManagement() {
             {/* 見積ヘッダ情報 */}
             <section className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h4 className="text-lg font-bold text-gray-900 mb-4">{selectedEstimate.pattern_name}</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-6">
                 <div>
                   <div className="text-gray-500 text-xs mb-1">顧客名/コード (project_id)</div>
                   <div className="font-bold text-gray-900">{selectedEstimate.project_id}</div>
@@ -114,6 +131,32 @@ export function EstimateManagement() {
                   <div className="text-gray-500 text-xs mb-1">ステータス</div>
                   <Badge variant={getStatusBadge(selectedEstimate.status).variant}>{getStatusBadge(selectedEstimate.status).label}</Badge>
                 </div>
+              </div>
+
+              {/* AI Summary */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-blue-700 font-bold flex items-center gap-1">
+                    <Sparkles size={14} />
+                    AI見積要約
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs bg-white"
+                    onClick={() => handleSummarize(selectedEstimate)}
+                    disabled={isSummarizing}
+                  >
+                    {isSummarizing ? "要約中..." : "AIで見積を要約"}
+                  </Button>
+                </div>
+                {summaryResult[selectedEstimate.id] ? (
+                  <div className="markdown-body prose prose-sm max-w-none text-gray-800">
+                    <ReactMarkdown>{summaryResult[selectedEstimate.id]}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">「AIで見積を要約」をクリックすると、見積内容の簡単な要約とコメントを生成します。</p>
+                )}
               </div>
             </section>
 

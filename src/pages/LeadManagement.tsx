@@ -1,9 +1,11 @@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
-import { Search, Filter, Download, Plus, MessageSquare, Globe, Tag } from "lucide-react";
+import { Search, Filter, Download, Plus, MessageSquare, Globe, Tag, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { useState } from "react";
 import { Drawer } from "../components/ui/Drawer";
+import { analyzeWithHighThinkingAndSearch } from "../lib/gemini";
+import ReactMarkdown from "react-markdown";
 
 const mockLeads = [
   { 
@@ -34,6 +36,21 @@ const mockWebAnalytics = {
 
 export function LeadManagement() {
   const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<Record<string, string>>({});
+
+  const handleAnalyze = async (companyName: string, id: string) => {
+    setIsAnalyzing(true);
+    try {
+      const prompt = `${companyName} について、Google検索を用いて最新の企業情報、最近のニュース、および営業アプローチの提案をまとめてください。`;
+      const result = await analyzeWithHighThinkingAndSearch(prompt);
+      setAiAnalysisResult(prev => ({ ...prev, [id]: result }));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -106,10 +123,57 @@ export function LeadManagement() {
             <section>
               <div className="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
                 <MessageSquare className="text-[#00a699]" size={20} />
-                <h4 className="text-lg font-bold text-gray-900">問合せ内容</h4>
+                <h4 className="text-lg font-bold text-gray-900">問合せ内容・基本情報</h4>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                  <div className="text-xs text-gray-500 mb-1">担当者(社内)</div>
+                  <div className="font-bold text-gray-900">{selectedLead.assignee_id || "未設定"}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                  <div className="text-xs text-gray-500 mb-1">予算</div>
+                  <div className="font-bold text-gray-900">{selectedLead.budget || "未設定"}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                  <div className="text-xs text-gray-500 mb-1">導入時期</div>
+                  <div className="font-bold text-gray-900">{selectedLead.timeline || "未設定"}</div>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                  <div className="text-xs text-gray-500 mb-1">従業員数</div>
+                  <div className="font-bold text-gray-900">{selectedLead.employees || "未設定"}</div>
+                </div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div className="text-xs text-gray-500 mb-2 font-bold">問合せメッセージ</div>
                 <p className="text-gray-800 whitespace-pre-wrap">{selectedLead.message}</p>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-blue-600 font-bold flex items-center gap-1">
+                    <Sparkles size={14} />
+                    AI企業調査結果
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs bg-white"
+                    onClick={() => handleAnalyze(selectedLead.company, selectedLead.id)}
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? "調査中..." : "最新情報をAIで調査"}
+                  </Button>
+                </div>
+                {aiAnalysisResult[selectedLead.id] ? (
+                  <div className="markdown-body prose prose-sm max-w-none text-gray-800">
+                    <ReactMarkdown>{aiAnalysisResult[selectedLead.id]}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-gray-800 whitespace-pre-wrap">{selectedLead.ai_investigation}</p>
+                )}
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 mb-4">
+                <div className="text-xs text-yellow-600 mb-2 font-bold">営業メモ</div>
+                <p className="text-gray-800 whitespace-pre-wrap">{selectedLead.info_sales_activity}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Tag size={16} className="text-gray-400" />
@@ -128,6 +192,10 @@ export function LeadManagement() {
                 <h4 className="text-lg font-bold text-gray-900">Web解析データ</h4>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm bg-white p-4 rounded-lg border border-gray-200">
+                <div className="flex flex-col border-b border-gray-50 pb-2">
+                  <span className="text-gray-500 text-xs mb-1">地域 (都道府県 / 市区町村)</span>
+                  <span className="font-medium text-gray-900">{selectedLead.region} / {selectedLead.city}</span>
+                </div>
                 <div className="flex flex-col border-b border-gray-50 pb-2">
                   <span className="text-gray-500 text-xs mb-1">ランディングページ</span>
                   <span className="font-medium text-gray-900 truncate" title={mockWebAnalytics.landing_page_url}>

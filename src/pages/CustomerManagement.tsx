@@ -1,14 +1,16 @@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
-import { Search, Filter, Download, Plus, FileText, TrendingUp, User } from "lucide-react";
+import { Search, Filter, Download, Plus, FileText, TrendingUp, User, MapPin } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { useState } from "react";
 import { Drawer } from "../components/ui/Drawer";
+import { analyzeLocationWithMaps } from "../lib/gemini";
+import ReactMarkdown from "react-markdown";
 
 const mockCustomers = [
-  { id: "1", customer_code: "C0001", customer_name: "株式会社アルファ", customer_name_kana: "カブシキガイシャアルファ", customer_rank: "S", phone_number: "03-1234-5678", fax: "03-1234-5679", address_1: "東京都渋谷区...", customer_division: "119", sales_type: "既存", representative_title: "代表取締役", created_at: "2023-11-01 10:00:00" },
-  { id: "2", customer_code: "C0002", customer_name: "ベータ商事", customer_name_kana: "ベータショウジ", customer_rank: "A", phone_number: "06-9876-5432", fax: "06-9876-5433", address_1: "大阪府大阪市...", customer_division: "128", sales_type: "新規", representative_title: "社長", created_at: "2023-11-02 14:30:00" },
-  { id: "3", customer_code: "C0003", customer_name: "ガンマ工業株式会社", customer_name_kana: "ガンマコウギョウ", customer_rank: "", phone_number: "092-111-2222", fax: "", address_1: "福岡県福岡市...", customer_division: "119", sales_type: "既存", representative_title: "", created_at: "2023-11-03 09:15:00" },
+  { id: "1", customer_code: "C0001", customer_name: "株式会社アルファ", customer_name_kana: "カブシキガイシャアルファ", customer_rank: "S", phone_number: "03-1234-5678", fax: "03-1234-5679", address_1: "東京都渋谷区神南1-1-1", customer_division: "119", sales_type: "既存", representative_title: "代表取締役", created_at: "2023-11-01 10:00:00" },
+  { id: "2", customer_code: "C0002", customer_name: "ベータ商事", customer_name_kana: "ベータショウジ", customer_rank: "A", phone_number: "06-9876-5432", fax: "06-9876-5433", address_1: "大阪府大阪市北区梅田1-1", customer_division: "128", sales_type: "新規", representative_title: "社長", created_at: "2023-11-02 14:30:00" },
+  { id: "3", customer_code: "C0003", customer_name: "ガンマ工業株式会社", customer_name_kana: "ガンマコウギョウ", customer_rank: "", phone_number: "092-111-2222", fax: "", address_1: "福岡県福岡市博多区博多駅前1-1", customer_division: "119", sales_type: "既存", representative_title: "", created_at: "2023-11-03 09:15:00" },
 ];
 
 const mockCustomerInfo = {
@@ -27,6 +29,20 @@ const mockSalesRanking = [
 
 export function CustomerManagement() {
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isAnalyzingLocation, setIsAnalyzingLocation] = useState(false);
+  const [locationAnalysisResult, setLocationAnalysisResult] = useState<Record<string, string>>({});
+
+  const handleAnalyzeLocation = async (address: string, id: string) => {
+    setIsAnalyzingLocation(true);
+    try {
+      const result = await analyzeLocationWithMaps(address);
+      setLocationAnalysisResult(prev => ({ ...prev, [id]: result }));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsAnalyzingLocation(false);
+    }
+  };
 
   return (
     <div className="bg-white w-full mt-6 p-4 md:p-6 rounded-lg border border-gray-200 shadow-sm">
@@ -105,6 +121,33 @@ export function CustomerManagement() {
                 <FileText className="text-[#00a699]" size={20} />
                 <h4 className="text-lg font-bold text-gray-900">顧客カルテ (customers_info)</h4>
               </div>
+
+              {/* Map Analysis */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-green-700 font-bold flex items-center gap-1">
+                    <MapPin size={14} />
+                    AI立地・アクセス分析 (Google Maps)
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs bg-white"
+                    onClick={() => handleAnalyzeLocation(selectedCustomer.address_1, selectedCustomer.id)}
+                    disabled={isAnalyzingLocation}
+                  >
+                    {isAnalyzingLocation ? "分析中..." : "立地をAIで分析"}
+                  </Button>
+                </div>
+                {locationAnalysisResult[selectedCustomer.id] ? (
+                  <div className="markdown-body prose prose-sm max-w-none text-gray-800">
+                    <ReactMarkdown>{locationAnalysisResult[selectedCustomer.id]}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">「立地をAIで分析」をクリックすると、Google Mapsのデータを用いて周辺環境やアクセス情報を分析します。</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
                   <div className="text-xs text-gray-500 mb-1">PQ (売上)</div>
